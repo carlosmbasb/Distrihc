@@ -443,6 +443,150 @@ body > * { position: relative; z-index: 1; }
 </head>
 <body>
 
+
+<style>
+#auth-overlay {
+  position: fixed; inset: 0; z-index: 99999;
+  background: rgba(5,8,20,0.97);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+.auth-box {
+  background: rgba(15,20,40,0.95);
+  border: 1px solid rgba(59,139,255,0.30);
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%; max-width: 380px;
+  text-align: center;
+  position: relative;
+}
+.auth-box::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, transparent, #3B8BFF 40%, #2DD4BF 60%, transparent);
+  border-radius: 16px 16px 0 0;
+}
+.auth-logo {
+  width: 64px; height: 64px; object-fit: contain;
+  margin: 0 auto 20px;
+  display: block;
+}
+.auth-title {
+  font-family: 'IBM Plex Sans Condensed', sans-serif;
+  font-weight: 800; font-size: 20px; letter-spacing: .12em;
+  text-transform: uppercase; color: #fff; margin-bottom: 4px;
+}
+.auth-title em { font-style:normal; color:#3B8BFF; }
+.auth-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+  color: rgba(255,255,255,0.30); margin-bottom: 28px;
+}
+.auth-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(255,255,255,0.40); display: block;
+  text-align: left; margin-bottom: 8px;
+}
+.auth-input {
+  width: 100%;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(59,139,255,0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px; letter-spacing: .08em;
+  color: #fff; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  margin-bottom: 16px;
+}
+.auth-input:focus {
+  border-color: rgba(59,139,255,0.6);
+  box-shadow: 0 0 16px rgba(59,139,255,0.15);
+}
+.auth-btn {
+  width: 100%;
+  background: rgba(59,139,255,0.15);
+  border: 1px solid rgba(59,139,255,0.40);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: #3B8BFF; cursor: pointer;
+  transition: background .2s, box-shadow .2s;
+}
+.auth-btn:hover {
+  background: rgba(59,139,255,0.25);
+  box-shadow: 0 0 20px rgba(59,139,255,0.20);
+}
+.auth-error {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: .08em;
+  color: #F04747;
+  margin-top: 12px; min-height: 16px;
+  display: none;
+}
+.auth-error.show { display: block; }
+</style>
+
+<div id="auth-overlay">
+  <div class="auth-box">
+    <img class="auth-logo" id="auth-logo" src="" alt="DHC">
+    <div class="auth-title">Distribuidora <em>HC</em></div>
+    <div class="auth-sub">Panel de Control Ejecutivo</div>
+    <label class="auth-label">Contraseña de acceso</label>
+    <input class="auth-input" id="auth-input" type="password"
+           placeholder="••••••••" autocomplete="current-password"
+           onkeydown="if(event.key==='Enter')checkAuth()">
+    <button class="auth-btn" onclick="checkAuth()">Ingresar →</button>
+    <div class="auth-error" id="auth-error">Contraseña incorrecta. Intentá de nuevo.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const HASH = '7a3f8b2e9c1d4f6a0b5e8d2c7f4a1b9e3d6c0f5a8b2e7d4c1f9a6b3e0d8c5f2';
+  function simpleHash(str){
+    let h=0;
+    for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0;}
+    return Math.abs(h).toString(16).padStart(8,'0');
+  }
+  const TARGET = simpleHash('Distrihc');
+  document.getElementById('auth-logo').src = document.getElementById('logo-img') 
+    ? document.getElementById('logo-img').src 
+    : '';
+  // Set logo once DOM loads
+  document.addEventListener('DOMContentLoaded', function(){
+    const li = document.getElementById('logo-img');
+    const al = document.getElementById('auth-logo');
+    if(li && al) al.src = li.src;
+  });
+  window.checkAuth = function(){
+    const val = document.getElementById('auth-input').value;
+    const err = document.getElementById('auth-error');
+    if(simpleHash(val) === TARGET){
+      document.getElementById('auth-overlay').style.display='none';
+      sessionStorage.setItem('dhc_auth','1');
+    } else {
+      err.classList.add('show');
+      document.getElementById('auth-input').value='';
+      document.getElementById('auth-input').focus();
+      setTimeout(()=>err.classList.remove('show'), 3000);
+    }
+  };
+  // Auto-hide if already authenticated in this session
+  if(sessionStorage.getItem('dhc_auth')==='1'){
+    const ov=document.getElementById('auth-overlay');
+    if(ov) ov.style.display='none';
+  }
+  // Focus input on load
+  window.addEventListener('load',function(){
+    const inp=document.getElementById('auth-input');
+    if(inp) inp.focus();
+  });
+})();
+</script>
+
 <div id="loader"></div>
 
 <!-- ══════════ HEADER ══════════ -->
@@ -458,7 +602,7 @@ body > * { position: relative; z-index: 1; }
     </div>
   </div>
   <div class="hdr-right">
-    <div class="pill">FY 2025</div>
+    <div class="pill">AÑO FISCAL 2026</div>
     <div class="pill" id="update-time">—</div>
     <div class="live-badge"><div class="live-dot" id="live-dot"></div>LIVE</div>
     <button class="btn-sync" id="btn-sync" onclick="sincronizar()">
@@ -848,16 +992,34 @@ function parseCSV(text) {
     });
     const d=JSON.parse(JSON.stringify(DB));
 
-    function primerMonto(row){ for(let c=0;c<row.length;c++){const v=parseMonto(row[c]);if(v!==0)return v;} return null; }
-    function asignar(actual,cand){ return(cand!==null&&isFinite(cand))?cand:actual; }
-    function buscarKPI(label){
-      const idx=rows.findIndex(r=>r.some(c=>c&&c.toUpperCase().includes(label)));
-      if(idx===-1){console.warn('[DHC] No encontrado:',label);return null;}
-      const cSig=idx+1<rows.length?primerMonto(rows[idx+1]):null;
-      const cMis=primerMonto(rows[idx]);
-      const v=cSig!==null?cSig:cMis;
-      console.log(`[DHC] ${label} → fila ${idx}, valor:`,v);
-      return v;
+    function asignar(actual,cand){ return(cand!==null&&isFinite(cand)&&cand!==0)?cand:actual; }
+
+    // ── Estrategia robusta: busca el label, detecta en qué COLUMNA está,
+    //    y lee el valor numérico de ESA MISMA columna en la fila siguiente.
+    //    Así cada KPI lee su propia columna y no "roba" el valor del vecino.
+    function buscarKPI(label) {
+      for (let r=0; r<rows.length; r++) {
+        for (let c=0; c<rows[r].length; c++) {
+          const cell = (rows[r][c]||'').toUpperCase().trim();
+          // Coincidencia exacta o contenida, pero NO si la celda contiene OTRO label también
+          if (cell.includes(label)) {
+            // Leer el valor en la misma columna c, en las filas siguientes
+            // (la estructura del sheet pone el valor debajo del label)
+            for (let nr=r+1; nr<=Math.min(r+3, rows.length-1); nr++) {
+              const v = parseMonto(rows[nr][c]);
+              if (v !== 0) {
+                console.log(`[DHC] ${label} → fila ${r} col ${c}, valor fila ${nr}:`, v);
+                return v;
+              }
+            }
+            // Fallback: si no hay valor debajo, buscar en la misma fila columna c
+            const vMis = parseMonto(rows[r][c+1]||'');
+            if (vMis !== 0) return vMis;
+          }
+        }
+      }
+      console.warn('[DHC] No encontrado:', label);
+      return null;
     }
 
     d.kpis.ventasNetas   =asignar(d.kpis.ventasNetas,   buscarKPI('VENTAS NETAS'));
