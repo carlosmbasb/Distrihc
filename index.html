@@ -444,149 +444,6 @@ body > * { position: relative; z-index: 1; }
 <body>
 
 
-<style>
-#auth-overlay {
-  position: fixed; inset: 0; z-index: 99999;
-  background: rgba(5,8,20,0.97);
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'IBM Plex Sans', sans-serif;
-}
-.auth-box {
-  background: rgba(15,20,40,0.95);
-  border: 1px solid rgba(59,139,255,0.30);
-  border-radius: 16px;
-  padding: 40px 36px;
-  width: 100%; max-width: 380px;
-  text-align: center;
-  position: relative;
-}
-.auth-box::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:2px;
-  background: linear-gradient(90deg, transparent, #3B8BFF 40%, #2DD4BF 60%, transparent);
-  border-radius: 16px 16px 0 0;
-}
-.auth-logo {
-  width: 64px; height: 64px; object-fit: contain;
-  margin: 0 auto 20px;
-  display: block;
-}
-.auth-title {
-  font-family: 'IBM Plex Sans Condensed', sans-serif;
-  font-weight: 800; font-size: 20px; letter-spacing: .12em;
-  text-transform: uppercase; color: #fff; margin-bottom: 4px;
-}
-.auth-title em { font-style:normal; color:#3B8BFF; }
-.auth-sub {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
-  color: rgba(255,255,255,0.30); margin-bottom: 28px;
-}
-.auth-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
-  color: rgba(255,255,255,0.40); display: block;
-  text-align: left; margin-bottom: 8px;
-}
-.auth-input {
-  width: 100%;
-  background: rgba(0,0,0,0.5);
-  border: 1px solid rgba(59,139,255,0.25);
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 15px; letter-spacing: .08em;
-  color: #fff; outline: none;
-  transition: border-color .2s, box-shadow .2s;
-  margin-bottom: 16px;
-}
-.auth-input:focus {
-  border-color: rgba(59,139,255,0.6);
-  box-shadow: 0 0 16px rgba(59,139,255,0.15);
-}
-.auth-btn {
-  width: 100%;
-  background: rgba(59,139,255,0.15);
-  border: 1px solid rgba(59,139,255,0.40);
-  border-radius: 8px;
-  padding: 12px;
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 12px; font-weight: 700;
-  letter-spacing: .12em; text-transform: uppercase;
-  color: #3B8BFF; cursor: pointer;
-  transition: background .2s, box-shadow .2s;
-}
-.auth-btn:hover {
-  background: rgba(59,139,255,0.25);
-  box-shadow: 0 0 20px rgba(59,139,255,0.20);
-}
-.auth-error {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px; letter-spacing: .08em;
-  color: #F04747;
-  margin-top: 12px; min-height: 16px;
-  display: none;
-}
-.auth-error.show { display: block; }
-</style>
-
-<div id="auth-overlay">
-  <div class="auth-box">
-    <img class="auth-logo" id="auth-logo" src="" alt="DHC">
-    <div class="auth-title">Distribuidora <em>HC</em></div>
-    <div class="auth-sub">Panel de Control Ejecutivo</div>
-    <label class="auth-label">Contraseña de acceso</label>
-    <input class="auth-input" id="auth-input" type="password"
-           placeholder="••••••••" autocomplete="current-password"
-           onkeydown="if(event.key==='Enter')checkAuth()">
-    <button class="auth-btn" onclick="checkAuth()">Ingresar →</button>
-    <div class="auth-error" id="auth-error">Contraseña incorrecta. Intentá de nuevo.</div>
-  </div>
-</div>
-
-<script>
-(function(){
-  const HASH = '7a3f8b2e9c1d4f6a0b5e8d2c7f4a1b9e3d6c0f5a8b2e7d4c1f9a6b3e0d8c5f2';
-  function simpleHash(str){
-    let h=0;
-    for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0;}
-    return Math.abs(h).toString(16).padStart(8,'0');
-  }
-  const TARGET = simpleHash('Distrihc');
-  document.getElementById('auth-logo').src = document.getElementById('logo-img') 
-    ? document.getElementById('logo-img').src 
-    : '';
-  // Set logo once DOM loads
-  document.addEventListener('DOMContentLoaded', function(){
-    const li = document.getElementById('logo-img');
-    const al = document.getElementById('auth-logo');
-    if(li && al) al.src = li.src;
-  });
-  window.checkAuth = function(){
-    const val = document.getElementById('auth-input').value;
-    const err = document.getElementById('auth-error');
-    if(simpleHash(val) === TARGET){
-      document.getElementById('auth-overlay').style.display='none';
-      sessionStorage.setItem('dhc_auth','1');
-    } else {
-      err.classList.add('show');
-      document.getElementById('auth-input').value='';
-      document.getElementById('auth-input').focus();
-      setTimeout(()=>err.classList.remove('show'), 3000);
-    }
-  };
-  // Auto-hide if already authenticated in this session
-  if(sessionStorage.getItem('dhc_auth')==='1'){
-    const ov=document.getElementById('auth-overlay');
-    if(ov) ov.style.display='none';
-  }
-  // Focus input on load
-  window.addEventListener('load',function(){
-    const inp=document.getElementById('auth-input');
-    if(inp) inp.focus();
-  });
-})();
-</script>
-
 <div id="loader"></div>
 
 <!-- ══════════ HEADER ══════════ -->
@@ -610,6 +467,9 @@ body > * { position: relative; z-index: 1; }
         <path d="M10.5 6a4.5 4.5 0 01-4.5 4.5v1.5A6 6 0 0012 6h-1.5zm-9 0A4.5 4.5 0 016 1.5V0a6 6 0 00-6 6h1.5zm4.5-4.5V0a6 6 0 016 6h-1.5A4.5 4.5 0 006 1.5z"/>
       </svg>
       Sincronizar
+    </button>
+    <button class="btn-sync" style="color:#F97316;background:rgba(249,115,22,0.10);border-color:rgba(249,115,22,0.35)" onclick="debugCSV()">
+      Debug CSV
     </button>
   </div>
 </header>
@@ -1075,6 +935,47 @@ function parseCSV(text) {
 }
 
 // ── SINCRONIZAR ──────────────────────────────────────────
+window.debugCSV = async function() {
+  try {
+    const res = await fetch(SHEETS_CSV_URL + '&t=' + Date.now(), {cache:'no-store'});
+    const text = await res.text();
+    const rows = text.split('\n').map(l => {
+      const cells=[]; let cur='',inQ=false;
+      for(let i=0;i<l.length;i++){
+        if(l[i]==='"'){inQ=!inQ;}
+        else if(l[i]===','&&!inQ){cells.push(cur.trim());cur='';}
+        else{cur+=l[i];}
+      }
+      cells.push(cur.trim()); return cells;
+    });
+    const keywords=['VENTA','MARGEN','EBITDA','RESULTADO','IVA'];
+    let html='<div style="position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.96);overflow:auto;padding:24px 20px;font-family:monospace;font-size:12px;color:#eee">';
+    html+='<button onclick="this.parentElement.remove()" style="position:fixed;top:14px;right:14px;background:#F04747;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:700">CERRAR</button>';
+    html+='<div style="color:#2DD4BF;margin-bottom:16px;font-size:14px;font-weight:700">CSV DEBUG - '+rows.length+' filas</div>';
+    html+='<div style="color:#F97316;margin-bottom:8px">FILAS CON KEYWORDS:</div>';
+    rows.forEach(function(row,ri){
+      if(keywords.some(function(k){return row.join('|').toUpperCase().includes(k);})){
+        html+='<div style="margin-bottom:4px;border-left:3px solid #3B8BFF;padding-left:8px"><b style="color:#3B8BFF">F'+ri+':</b> ';
+        row.forEach(function(cell,ci){if(cell.trim())html+='<span style="background:rgba(59,139,255,0.15);border-radius:3px;padding:1px 4px;margin:1px">['+ci+'] <b style="color:#FFD600">'+cell+'</b></span> ';});
+        html+='</div>';
+        if(rows[ri+1]){
+          html+='<div style="margin-bottom:10px;padding-left:24px;color:#777">siguiente F'+(ri+1)+': ';
+          rows[ri+1].forEach(function(cell,ci){if(cell.trim())html+='<span style="padding:1px 4px;margin:1px;color:#aaa">['+ci+'] '+cell+'</span> ';});
+          html+='</div>';
+        }
+      }
+    });
+    html+='<div style="color:#F97316;margin:14px 0 8px">PRIMERAS 20 FILAS:</div>';
+    rows.slice(0,20).forEach(function(row,ri){
+      html+='<div style="margin-bottom:2px;color:#555">F'+ri+': ';
+      row.forEach(function(cell,ci){if(cell.trim())html+='<span style="padding:1px 4px;margin:1px;color:#999">['+ci+'] '+cell+'</span> ';});
+      html+='</div>';
+    });
+    html+='</div>';
+    document.body.insertAdjacentHTML('beforeend',html);
+  } catch(e){alert('Error: '+e.message);}
+};
+
 async function sincronizar() {
   const btn=document.getElementById('btn-sync');
   const dot=document.getElementById('live-dot');
