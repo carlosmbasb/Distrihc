@@ -626,7 +626,7 @@ const DB = {
   depositos: [
     { nombre:'MACHADO', skus:120 },
     { nombre:'CARRERA', skus:174 },
-    { nombre:'BAS',     skus:159 },
+    { nombre:'BAS',     skus:158 },
   ],
 };
 
@@ -930,6 +930,45 @@ function parseCSV(text) {
       }
       if(cl.length>0)d.topClientes=cl.slice(0,5);
     }
+
+    // ── Depósitos: busca "Unidades en Depósito - NOMBRE" y lee el número debajo ──
+    // El sheet tiene celdas tipo "Unidades en Depósito - MACHADO" con el valor en la fila siguiente
+    const depNombres = ['MACHADO','CARRERA','BAS'];
+    depNombres.forEach(function(nombre) {
+      for (let r=0; r<rows.length; r++) {
+        for (let c=0; c<rows[r].length; c++) {
+          const cell = (rows[r][c]||'').toUpperCase().trim();
+          if (cell.includes('DEPOSITO') || cell.includes('DEPÓSITO')) {
+            if (cell.includes(nombre)) {
+              // Valor puede estar en la misma celda col c, fila siguiente
+              // o puede venir como "158 SKUs" — extraer solo el número
+              for (let nr=r+1; nr<=Math.min(r+3, rows.length-1); nr++) {
+                const raw = (rows[nr][c]||'').trim();
+                if (raw) {
+                  // Extraer número: "158 SKUs" → 158
+                  const match = raw.match(/[\d,]+/);
+                  if (match) {
+                    const v = parseInt(match[0].replace(/,/g,''), 10);
+                    if (v > 0) {
+                      const dep = d.depositos.find(function(x){return x.nombre===nombre;});
+                      if (dep) {
+                        dep.skus = v;
+                        console.log('[DHC] Depósito '+nombre+' → fila '+r+' col '+c+', valor fila '+nr+':', v);
+                      }
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Actualizar también el semáforo skusDepósito con la suma real
+    d.alertas.skusDepósito = d.depositos.reduce(function(a,x){return a+x.skus;},0);
+
     return d;
   }catch(e){console.error('[DHC] CSV error:',e);return DB;}
 }
