@@ -588,13 +588,13 @@ const DB = {
     cobranzasVencidas:  0,
     pagosPróximos:      820141,
     skusDepósito:       43,
-    conversionClientes: 21.0,
+    conversionClientes: 21.3,
   },
   evolucion: {
-    meses:  ['Ene','Feb','Mar','Abr','May'],
-    ventas: [1512650,1500694,2583326,6866715,578644],
-    margen: [182955,113767,379498,648153,90589],
-    ebitda: [-1113872,-1169243,-1270502,-1251992,-330818],
+    meses:  ['Ene','Feb','Mar','Abr','May','Jun'],
+    ventas: [1512650,1500694,2583326,6866715,578644,2498925],
+    margen: [182955,113767,379498,648153,90589,374839],
+    ebitda: [-1113872,-1169243,-1270502,-1251992,-330818,374839],
   },
   topClientes: [
     { nombre:'Fideicomiso Tucumán',         ventas:2243789 },
@@ -839,6 +839,15 @@ function renderDepositos(deps) {
 }
 
 // ── CSV PARSER ───────────────────────────────────────────
+// Posiciones verificadas con Debug CSV el 01/06/2026:
+//   Fila 4  → encabezados KPIs: col1=VENTAS NETAS, col4=MARGEN BRUTO, col7=EBITDA, col10=RESULTADO NETO
+//   Fila 5  → valores KPIs en las mismas columnas
+//   Fila 7  → col4=% MARGEN, col7=% RES.NETO, col10=IVA NETO (valor en fila 8 col10)
+//   Fila 4  → evolución: col24=Mes, col25=Ventas, col26=Margen Bruto, col27=EBITDA
+//   Fila 36 → encabezado tabla clientes/marcas/socios
+//   Fila 14 col7 → "Unidades en Depósito - MACHADO", fila 15 col7 → valor
+//   Fila 16 col7 → "Unidades en Depósito - CARRERA", fila 17 col7 → valor
+//   Fila 18 col7 → "Unidades en Depósito - BAS",     fila 19 col7 → valor
 function parseCSV(text) {
   try {
     const rows=text.split('\n').map(l=>{
@@ -852,125 +861,163 @@ function parseCSV(text) {
     });
     const d=JSON.parse(JSON.stringify(DB));
 
-    function asignar(actual,cand){ return(cand!==null&&isFinite(cand)&&cand!==0)?cand:actual; }
+    function pm(v){ return parseMonto(v||''); }
+    function ok(v){ return v!==0&&isFinite(v)&&v!==null; }
 
-    // ── Estrategia robusta: busca el label, detecta en qué COLUMNA está,
-    //    y lee el valor numérico de ESA MISMA columna en la fila siguiente.
-    //    Así cada KPI lee su propia columna y no "roba" el valor del vecino.
-    function buscarKPI(label) {
-      for (let r=0; r<rows.length; r++) {
-        for (let c=0; c<rows[r].length; c++) {
-          const cell = (rows[r][c]||'').toUpperCase().trim();
-          // Coincidencia exacta o contenida, pero NO si la celda contiene OTRO label también
-          if (cell.includes(label)) {
-            // Leer el valor en la misma columna c, en las filas siguientes
-            // (la estructura del sheet pone el valor debajo del label)
-            for (let nr=r+1; nr<=Math.min(r+3, rows.length-1); nr++) {
-              const v = parseMonto(rows[nr][c]);
-              if (v !== 0) {
-                console.log(`[DHC] ${label} → fila ${r} col ${c}, valor fila ${nr}:`, v);
-                return v;
-              }
-            }
-            // Fallback: si no hay valor debajo, buscar en la misma fila columna c
-            const vMis = parseMonto(rows[r][c+1]||'');
-            if (vMis !== 0) return vMis;
-          }
+    // ── KPIs: fila 4 tiene labels, fila 5 tiene valores ──────────────
+    // Buscar la fila de encabezados buscando "VENTAS NETAS" en col 1
+    let kpiHdr = -1;
+    for(let r=0; r<rows.length; r++){
+      if((rows[r][1]||'').toUpperCase().includes('VENTAS NETAS')){ kpiHdr=r; break; }
+    }
+    if(kpiHdr !== -1 && rows[kpiHdr+1]){
+      const vRow = rows[kpiHdr+1]; // fila con los valores
+      const v1 = pm(vRow[1]);   // Ventas Netas — col 1
+      const v4 = pm(vRow[4]);   // Margen Bruto — col 4
+      const v7 = pm(vRow[7]);   // EBITDA       — col 7
+      const v10= pm(vRow[10]);  // Resultado Neto — col 10
+      if(ok(v1))  d.kpis.ventasNetas   = v1;
+      if(ok(v4))  d.kpis.margenBruto   = v4;
+      if(ok(v7))  d.kpis.ebitda        = v7;
+      if(ok(v10)) d.kpis.resultadoNeto = v10;
+      console.log('[DHC] KPIs fila',(kpiHdr+1),': ventas=',v1,'margen=',v4,'ebitda=',v7,'neto=',v10);
+    }
+
+    // ── IVA NETO: está en la fila de porcentajes (kpiHdr+3), col 10 ──
+    if(kpiHdr !== -1){
+      // Buscar en las próximas filas la que tenga IVA NETO en col 10
+      for(let r=kpiHdr+1; r<=Math.min(kpiHdr+6, rows.length-1); r++){
+        const cell10 = (rows[r][10]||'').toUpperCase();
+        if(cell10.includes('IVA')){
+          // valor en la fila siguiente, misma col
+          const vIva = pm((rows[r+1]||[])[10]);
+          if(ok(vIva)){ d.kpis.ivaNeto = vIva; console.log('[DHC] IVA fila',(r+1),':',vIva); }
+          break;
+        }
+        // O puede que el valor esté en la misma fila del label de IVA
+        const vIva = pm(rows[r][10]);
+        const labelAnterior = (rows[r-1] ? rows[r-1][10]||'' : '').toUpperCase();
+        if(labelAnterior.includes('IVA') && ok(vIva)){
+          d.kpis.ivaNeto = vIva; console.log('[DHC] IVA fila',r,':',vIva); break;
         }
       }
-      console.warn('[DHC] No encontrado:', label);
-      return null;
     }
 
-    d.kpis.ventasNetas   =asignar(d.kpis.ventasNetas,   buscarKPI('VENTAS NETAS'));
-    d.kpis.margenBruto   =asignar(d.kpis.margenBruto,   buscarKPI('MARGEN BRUTO'));
-    d.kpis.ebitda        =asignar(d.kpis.ebitda,        buscarKPI('EBITDA'));
-    d.kpis.resultadoNeto =asignar(d.kpis.resultadoNeto, buscarKPI('RESULTADO NETO'));
-    d.kpis.ivaNeto       =asignar(d.kpis.ivaNeto,       buscarKPI('IVA NETO'));
-
-    if(d.kpis.ventasNetas!==0){
-      d.kpis.pctMargen=parseFloat(((d.kpis.margenBruto/d.kpis.ventasNetas)*100).toFixed(1));
-      d.kpis.pctEbitda=parseFloat(((d.kpis.ebitda/d.kpis.ventasNetas)*100).toFixed(1));
-      d.kpis.pctNeto  =parseFloat(((d.kpis.resultadoNeto/d.kpis.ventasNetas)*100).toFixed(1));
+    // Recalcular porcentajes con valores frescos
+    if(d.kpis.ventasNetas !== 0){
+      d.kpis.pctMargen = parseFloat(((d.kpis.margenBruto   / d.kpis.ventasNetas)*100).toFixed(1));
+      d.kpis.pctEbitda = parseFloat(((d.kpis.ebitda        / d.kpis.ventasNetas)*100).toFixed(1));
+      d.kpis.pctNeto   = parseFloat(((d.kpis.resultadoNeto / d.kpis.ventasNetas)*100).toFixed(1));
     }
 
-    let mesColIdx=-1,mesRowIdx=-1;
-    outer:for(let r=0;r<rows.length;r++)for(let c=0;c<rows[r].length;c++)
-      if(rows[r][c]&&rows[r][c].trim()==='Mes'){mesRowIdx=r;mesColIdx=c;break outer;}
-
-    if(mesRowIdx!==-1){
-      const hRow=rows[mesRowIdx];
-      let cV=-1,cM=-1,cE=-1;
-      for(let c=mesColIdx+1;c<hRow.length;c++){
-        const h=(hRow[c]||'').toUpperCase();
-        if(h.includes('VENTA')&&cV===-1)cV=c;
-        else if((h.includes('MARGEN')||h.includes('MB'))&&cM===-1)cM=c;
-        else if(h.includes('EBITDA')&&cE===-1)cE=c;
-      }
-      if(cV===-1)cV=mesColIdx+1; if(cM===-1)cM=mesColIdx+2; if(cE===-1)cE=mesColIdx+3;
+    // ── Evolución mensual: col24=Mes, col25=Ventas, col26=Margen, col27=EBITDA ──
+    // Buscar la fila encabezado que tenga "Mes" en col 24
+    let evHdr = -1;
+    for(let r=0; r<rows.length; r++){
+      if((rows[r][24]||'').trim()==='Mes'){ evHdr=r; break; }
+    }
+    if(evHdr !== -1){
       const ms=[],vs=[],ma=[],ea=[];
-      for(let r=mesRowIdx+1;r<rows.length;r++){
-        const row=rows[r]; const mes=row[mesColIdx]?row[mesColIdx].trim():'';
-        if(!mes)break;
-        ms.push(mes);vs.push(parseMonto(row[cV]));ma.push(parseMonto(row[cM]));ea.push(parseMonto(row[cE]));
+      for(let r=evHdr+1; r<rows.length; r++){
+        const mes=(rows[r][24]||'').trim();
+        if(!mes) break; // fin de tabla
+        const v=pm(rows[r][25]);
+        const m=pm(rows[r][26]);
+        const e=pm(rows[r][27]);
+        // Solo incluir meses con ventas > 0 (los meses futuros tienen $0)
+        if(v > 0){
+          ms.push(mes); vs.push(v); ma.push(m); ea.push(e);
+        }
       }
-      if(ms.length>0)d.evolucion={meses:ms,ventas:vs,margen:ma,ebitda:ea};
+      if(ms.length>0){
+        d.evolucion={meses:ms,ventas:vs,margen:ma,ebitda:ea};
+        console.log('[DHC] Evolución:',ms,vs);
+      }
     }
 
-    const ci=rows.findIndex(r=>r.some(c=>c&&c.trim()==='#')&&r.some(c=>c&&c.toLowerCase().includes('cliente')));
-    if(ci!==-1){
-      const rcol=rows[ci].findIndex(c=>c&&c.trim()==='#');
-      const ncol=rows[ci].findIndex(c=>c&&c.toLowerCase().includes('cliente'));
-      const vcol=rows[ci].findIndex(c=>c&&c.toLowerCase().includes('venta'));
-      const vc=vcol!==-1?vcol:ncol+1;
-      const cl=[];
-      for(let r=ci+1;r<Math.min(ci+11,rows.length);r++){
-        const nombre=(rows[r][ncol]||'').trim(); if(!nombre)break;
-        cl.push({nombre,ventas:parseMonto(rows[r][vc])});
+    // ── Top Clientes y Marcas: fila 36 es encabezado ──────────────────
+    // col1=#, col2=Cliente, col3=Ventas Clientes, col5=Marca, col6=Ventas Marcas
+    let tblHdr = -1;
+    for(let r=0; r<rows.length; r++){
+      if((rows[r][1]||'').trim()==='#' && (rows[r][2]||'').toLowerCase().includes('cliente')){
+        tblHdr=r; break;
       }
-      if(cl.length>0)d.topClientes=cl.slice(0,5);
+    }
+    if(tblHdr !== -1){
+      const clientes=[], marcas=[];
+      for(let r=tblHdr+1; r<rows.length; r++){
+        const nombreC=(rows[r][2]||'').trim();
+        const nombreM=(rows[r][5]||'').trim();
+        if(!nombreC && !nombreM) break;
+        if(nombreC) clientes.push({nombre:nombreC, ventas:pm(rows[r][3])});
+        if(nombreM) marcas.push({nombre:nombreM,   ventas:pm(rows[r][6])});
+      }
+      if(clientes.length>0) d.topClientes=clientes.slice(0,5);
+      if(marcas.length>0)   d.topMarcas  =marcas.slice(0,5);
+      console.log('[DHC] Clientes:',clientes.slice(0,3));
     }
 
-    // ── Depósitos: busca "Unidades en Depósito - NOMBRE" y lee el número debajo ──
-    // El sheet tiene celdas tipo "Unidades en Depósito - MACHADO" con el valor en la fila siguiente
-    const depNombres = ['MACHADO','CARRERA','BAS'];
-    depNombres.forEach(function(nombre) {
-      for (let r=0; r<rows.length; r++) {
-        for (let c=0; c<rows[r].length; c++) {
-          const cell = (rows[r][c]||'').toUpperCase().trim();
-          if (cell.includes('DEPOSITO') || cell.includes('DEPÓSITO')) {
-            if (cell.includes(nombre)) {
-              // Valor puede estar en la misma celda col c, fila siguiente
-              // o puede venir como "158 SKUs" — extraer solo el número
-              for (let nr=r+1; nr<=Math.min(r+3, rows.length-1); nr++) {
-                const raw = (rows[nr][c]||'').trim();
-                if (raw) {
-                  // Extraer número: "158 SKUs" → 158
-                  const match = raw.match(/[\d,]+/);
-                  if (match) {
-                    const v = parseInt(match[0].replace(/,/g,''), 10);
-                    if (v > 0) {
-                      const dep = d.depositos.find(function(x){return x.nombre===nombre;});
-                      if (dep) {
-                        dep.skus = v;
-                        console.log('[DHC] Depósito '+nombre+' → fila '+r+' col '+c+', valor fila '+nr+':', v);
-                      }
-                      break;
-                    }
-                  }
-                }
+    // ── Depósitos: buscar por label en col 7 ──────────────────────────
+    // "Unidades en Depósito - MACHADO" → valor en fila siguiente col 7 (formato "120 SKUs")
+    for(let r=0; r<rows.length; r++){
+      const cell = (rows[r][7]||'').toUpperCase();
+      if(cell.includes('DEPOSITO') || cell.includes('DEPÓSITO')){
+        ['MACHADO','CARRERA','BAS'].forEach(function(nombre){
+          if(cell.includes(nombre)){
+            // Valor en fila siguiente col 7, formato "158 SKUs"
+            const raw = (rows[r+1] ? rows[r+1][7]||'' : '').trim();
+            const match = raw.match(/(\d[\d,]*)/);
+            if(match){
+              const v = parseInt(match[1].replace(/,/g,''),10);
+              if(v>0){
+                const dep=d.depositos.find(function(x){return x.nombre===nombre;});
+                if(dep){ dep.skus=v; console.log('[DHC] Depósito',nombre,':',v); }
               }
             }
           }
-        }
+        });
       }
-    });
+    }
 
-    // Actualizar también el semáforo skusDepósito con la suma real
+    // ── Semáforo — Conversión clientes ───────────────────────
+    // Fila K13 del sheet (índice ~12 en CSV base-0)
+    // Buscar la fila que contenga "Conversión" o "Conversion" y leer el porcentaje
+    for(let r=0; r<rows.length; r++){
+      const rowStr = rows[r].join('|').toLowerCase();
+      if(rowStr.includes('conversi')){
+        // El % puede estar en la misma fila — buscar una celda con formato "21,3%" o "21.3%"
+        for(let c=0; c<rows[r].length; c++){
+          const cell = (rows[r][c]||'').trim();
+          // Buscar patrón numérico con % — puede usar coma o punto decimal
+          const match = cell.match(/^(\d{1,3})[,.](\d+)%?$/) || cell.match(/^(\d{1,3})[,.](\d+)$/);
+          if(match){
+            const val = parseFloat(match[1] + '.' + match[2]);
+            if(val > 0 && val <= 100){
+              d.alertas.conversionClientes = val;
+              console.log('[DHC] Conversión fila',r,'col',c,':',val);
+              break;
+            }
+          }
+          // También puede venir como "21,3 %" con espacio
+          const match2 = cell.replace(',','.').match(/^([\d.]+)\s*%?$/);
+          if(match2){
+            const val = parseFloat(match2[1]);
+            if(val > 0 && val <= 100 && cell.includes('%')){
+              d.alertas.conversionClientes = val;
+              console.log('[DHC] Conversión% fila',r,'col',c,':',val);
+              break;
+            }
+          }
+        }
+        break;
+      }
+    }
+
+    // Recalcular total semáforo
     d.alertas.skusDepósito = d.depositos.reduce(function(a,x){return a+x.skus;},0);
 
     return d;
-  }catch(e){console.error('[DHC] CSV error:',e);return DB;}
+  }catch(e){ console.error('[DHC] CSV error:',e); return DB; }
 }
 
 // ── SINCRONIZAR ──────────────────────────────────────────
