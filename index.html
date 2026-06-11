@@ -575,26 +575,26 @@ document.getElementById('logo-img').src = 'data:image/jpeg;base64,' + LOGO_B64;
 // ⚠️  CONORVIAL: verificar monto real (actualmente $976K)
 const DB = {
   kpis: {
-    ventasNetas:    13042030,
-    margenBruto:    1414963,
-    ebitda:        -5136426,
-    resultadoNeto: -5230711,
-    pctMargen:      10.8,
-    pctEbitda:     -39.4,
-    pctNeto:       -40.1,
-    ivaNeto:       -2672024,
+    ventasNetas:    15605955,
+    margenBruto:    1854801,
+    ebitda:        -7887682,
+    resultadoNeto: -8000499,
+    pctMargen:      11.9,
+    pctEbitda:     -50.5,
+    pctNeto:       -51.3,
+    ivaNeto:       -3196798,
   },
   alertas: {
     cobranzasVencidas:  0,
-    pagosPróximos:      820141,
+    pagosPróximos:      503201,
     skusDepósito:       43,
-    conversionClientes: 21.3,
+    conversionClientes: 21.7,
   },
   evolucion: {
     meses:  ['Ene','Feb','Mar','Abr','May','Jun'],
-    ventas: [1512650,1500694,2583326,6866715,578644,2498925],
-    margen: [182955,113767,379498,648153,90589,374839],
-    ebitda: [-1113872,-1169243,-1270502,-1251992,-330818,374839],
+    ventas: [1512650,1500694,2583326,6866715,578644,2563925],
+    margen: [182955,113767,379498,648153,90589,439839],
+    ebitda: [-1113872,-1169243,-1270502,-1251992,-1830818,-1251256],
   },
   topClientes: [
     { nombre:'Fideicomiso Tucumán',         ventas:2243789 },
@@ -979,7 +979,40 @@ function parseCSV(text) {
       }
     }
 
-    // ── Semáforo — Conversión clientes ───────────────────────
+    // ── Semáforo de alertas ───────────────────────────────────
+    // F11: col1=label Cobranzas, col4=label Pagos, col7=label Depósito, col10=label Conversión
+    // F12: col1=valor Cobranzas, col4=valor Pagos, col7=valor Depósito, col10=valor Conversión
+    let semHdr = -1;
+    for(let r=0; r<rows.length; r++){
+      const c1 = (rows[r][1]||'').toLowerCase();
+      const c4 = (rows[r][4]||'').toLowerCase();
+      if(c1.includes('cobranz') && c4.includes('pago')){
+        semHdr = r; break;
+      }
+    }
+    if(semHdr !== -1 && rows[semHdr+1]){
+      const vRow = rows[semHdr+1];
+      // col1 → Cobranzas vencidas
+      const vCob = pm(vRow[1]);
+      if(isFinite(vCob)) d.alertas.cobranzasVencidas = vCob;
+      // col4 → Pagos próximos
+      const vPag = pm(vRow[4]);
+      if(ok(vPag)) d.alertas.pagosPróximos = vPag;
+      // col7 → SKUs depósito (formato "43 SKUs" — extraer número)
+      const rawSkus = (vRow[7]||'').trim();
+      const matchSkus = rawSkus.match(/(\d+)/);
+      if(matchSkus) d.alertas.skusDepósito = parseInt(matchSkus[1], 10);
+      // col10 → Conversión clientes (formato "21.7%" o "21,7%")
+      const rawConv = (vRow[10]||'').trim().replace(',','.');
+      const matchConv = rawConv.match(/([\d.]+)/);
+      if(matchConv){
+        const vConv = parseFloat(matchConv[1]);
+        if(vConv > 0 && vConv <= 100) d.alertas.conversionClientes = vConv;
+      }
+      console.log('[DHC] Semáforo → cobranzas:',vCob,'pagos:',vPag,'skus:',d.alertas.skusDepósito,'conv:',d.alertas.conversionClientes);
+    }
+
+    // ── Conversión clientes ───────────────────────────────────
     // Fila K13 del sheet (índice ~12 en CSV base-0)
     // Buscar la fila que contenga "Conversión" o "Conversion" y leer el porcentaje
     for(let r=0; r<rows.length; r++){
