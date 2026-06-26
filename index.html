@@ -575,26 +575,26 @@ document.getElementById('logo-img').src = 'data:image/jpeg;base64,' + LOGO_B64;
 // ⚠️  CONORVIAL: verificar monto real (actualmente $976K)
 const DB = {
   kpis: {
-    ventasNetas:    15605955,
-    margenBruto:    1854801,
-    ebitda:        -7887682,
-    resultadoNeto: -8000499,
+    ventasNetas:    16262631,
+    margenBruto:    1936668,
+    ebitda:        -7816911,
+    resultadoNeto: -7934553,
     pctMargen:      11.9,
-    pctEbitda:     -50.5,
-    pctNeto:       -51.3,
-    ivaNeto:       -3196798,
+    pctEbitda:     -48.1,
+    pctNeto:       -48.8,
+    ivaNeto:       -3344483,
   },
   alertas: {
     cobranzasVencidas:  0,
     pagosPróximos:      503201,
-    skusDepósito:       43,
-    conversionClientes: 21.7,
+    skusDepósito:       44,
+    conversionClientes: 22.4,
   },
   evolucion: {
     meses:  ['Ene','Feb','Mar','Abr','May','Jun'],
-    ventas: [1512650,1500694,2583326,6866715,578644,2563925],
-    margen: [182955,113767,379498,648153,90589,439839],
-    ebitda: [-1113872,-1169243,-1270502,-1251992,-1830818,-1251256],
+    ventas: [1512650,1500694,2583326,6866715,578644,3220601],
+    margen: [182955,113767,379498,648153,90589,521705],
+    ebitda: [-1113872,-1169243,-1270502,-1251992,-1830818,-1180484],
   },
   topClientes: [
     { nombre:'Fideicomiso Tucumán',         ventas:2243789 },
@@ -624,9 +624,9 @@ const DB = {
   ],
   totalStock: { skus:43, valor:1704594 },
   depositos: [
-    { nombre:'MACHADO', skus:120 },
-    { nombre:'CARRERA', skus:174 },
-    { nombre:'BAS',     skus:158 },
+    { nombre:'MACHADO', skus:99  },
+    { nombre:'CARRERA', skus:224 },
+    { nombre:'BAS',     skus:157 },
   ],
 };
 
@@ -997,7 +997,7 @@ function parseCSV(text) {
       if(isFinite(vCob)) d.alertas.cobranzasVencidas = vCob;
       // col4 → Pagos próximos
       const vPag = pm(vRow[4]);
-      if(ok(vPag)) d.alertas.pagosPróximos = vPag;
+      if(isFinite(vPag)) d.alertas.pagosPróximos = vPag;
       // col7 → SKUs depósito (formato "43 SKUs" — extraer número)
       const rawSkus = (vRow[7]||'').trim();
       const matchSkus = rawSkus.match(/(\d+)/);
