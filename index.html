@@ -575,26 +575,26 @@ document.getElementById('logo-img').src = 'data:image/jpeg;base64,' + LOGO_B64;
 // ⚠️  CONORVIAL: verificar monto real (actualmente $976K)
 const DB = {
   kpis: {
-    ventasNetas:    16262631,
-    margenBruto:    1936668,
-    ebitda:        -7816911,
-    resultadoNeto: -7934553,
-    pctMargen:      11.9,
-    pctEbitda:     -48.1,
-    pctNeto:       -48.8,
-    ivaNeto:       -3344483,
+    ventasNetas:    16550436,
+    margenBruto:    1960218,
+    ebitda:        -7793361,
+    resultadoNeto: -7913027,
+    pctMargen:      11.8,
+    pctEbitda:     -47.1,
+    pctNeto:       -47.8,
+    ivaNeto:       -3393904,
   },
   alertas: {
     cobranzasVencidas:  0,
-    pagosPróximos:      503201,
+    pagosPróximos:      41636,
     skusDepósito:       44,
     conversionClientes: 22.4,
   },
   evolucion: {
     meses:  ['Ene','Feb','Mar','Abr','May','Jun'],
-    ventas: [1512650,1500694,2583326,6866715,578644,3220601],
-    margen: [182955,113767,379498,648153,90589,521705],
-    ebitda: [-1113872,-1169243,-1270502,-1251992,-1830818,-1180484],
+    ventas: [1512650,1500694,2583326,6866715,578644,3508406],
+    margen: [182955,113767,379498,648153,90589,545255],
+    ebitda: [-1113872,-1169243,-1270502,-1251992,-1830818,-1156935],
   },
   topClientes: [
     { nombre:'Fideicomiso Tucumán',         ventas:2243789 },
@@ -919,6 +919,7 @@ function parseCSV(text) {
     for(let r=0; r<rows.length; r++){
       if((rows[r][24]||'').trim()==='Mes'){ evHdr=r; break; }
     }
+    console.log('[DHC] evHdr encontrado en fila:', evHdr);
     if(evHdr !== -1){
       const ms=[],vs=[],ma=[],ea=[];
       for(let r=evHdr+1; r<rows.length; r++){
@@ -927,6 +928,7 @@ function parseCSV(text) {
         const v=pm(rows[r][25]);
         const m=pm(rows[r][26]);
         const e=pm(rows[r][27]);
+        console.log('[DHC] Evolución fila',r,'mes:',mes,'ventas raw:',rows[r][25],'parseado:',v);
         // Solo incluir meses con ventas > 0 (los meses futuros tienen $0)
         if(v > 0){
           ms.push(mes); vs.push(v); ma.push(m); ea.push(e);
@@ -934,8 +936,12 @@ function parseCSV(text) {
       }
       if(ms.length>0){
         d.evolucion={meses:ms,ventas:vs,margen:ma,ebitda:ea};
-        console.log('[DHC] Evolución:',ms,vs);
+        console.log('[DHC] Evolución FINAL asignada:',JSON.stringify(d.evolucion));
+      } else {
+        console.warn('[DHC] Evolución: 0 meses con ventas>0, se mantiene hardcode');
       }
+    } else {
+      console.warn('[DHC] No se encontró fila con "Mes" en col24');
     }
 
     // ── Top Clientes y Marcas: fila 36 es encabezado ──────────────────
